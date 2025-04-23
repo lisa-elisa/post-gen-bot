@@ -27,3 +27,18 @@ def update_property(page_id: str, prop: str, content):
     else:
         payload[prop] = {'rich_text': [{'text': {'content': content}}]}
     return _client.pages.update(page_id=page_id, properties=payload)
+
+def update_image(page_id: str, image_url: str):
+    return _client.pages.update(
+        page_id=page_id,
+        properties={
+            "Изображение": {
+                "files": [
+                    {
+                        "name": "uploaded-image",
+                        "external": {"url": image_url}
+                    }
+                ]
+            }
+        }
+    )

@@ -7,7 +7,8 @@ from telegram.ext import (
     ContextTypes, ConversationHandler,
     MessageHandler, filters
 )
-from notion_service import create_page, update_property
+from notion_service import create_page, update_property, update_image
+from telegram.ext import MessageHandler, filters
 
 PROP_MAP = {
     'idea':  'Идея',
@@ -66,6 +67,22 @@ async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Отмена. Начни заново /idea, /draft или /final.")
     return ConversationHandler.END
 
+async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    page_id = context.user_data.get("page_id")
+    if not page_id:
+        return await update.message.reply_text("Сначала создай запись через /idea, /draft или /final.")
+
+    photo = update.message.photo[-1]  # берём самое качественное фото
+    file = await context.bot.get_file(photo.file_id)
+    image_url = f"https://api.telegram.org/file/bot{TOKEN}/{file.file_path}"
+
+    try:
+        update_image(page_id, image_url)
+        await update.message.reply_text("Картинка сохранена в Notion! 🖼")
+    except Exception as e:
+        logging.error(f"Image upload error: {e}", exc_info=True)
+        await update.message.reply_text("Не удалось сохранить изображение.")
+
 if __name__ == '__main__':
     conv = ConversationHandler(
         entry_points=[
@@ -85,3 +102,4 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('start', start))
     app.add_handler(conv)
     app.run_polling(drop_pending_updates=True)
+    app.add_handler(MessageHandler(filters.PHOTO & ~filters.COMMAND, handle_image))
